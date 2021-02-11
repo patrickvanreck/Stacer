@@ -1,5 +1,6 @@
 #include "processes_page.h"
 #include "ui_processes_page.h"
+#include "utilities.h"
 
 ProcessesPage::~ProcessesPage()
 {
@@ -9,13 +10,10 @@ ProcessesPage::~ProcessesPage()
 ProcessesPage::ProcessesPage(QWidget *parent) :
   QWidget(parent),
   ui(new Ui::ProcessesPage),
-  model(new QStandardItemModel(this)),
-  sortModel(new QSortFilterProxyModel(this)),
-  headers{"PID", tr("Resident Memory"), tr("%Memory"), tr("Virtual Memory"),
-          tr("User"), "%CPU", tr("Start Time"), tr("State"), tr("Group"),
-          tr("Nice"), tr("CPU Time"), tr("Session"), tr("Seat"), tr("Process")},
+  mItemModel(new QStandardItemModel(this)),
+  mSortFilterModel(new QSortFilterProxyModel(this)),
   im(InfoManager::ins()),
-  timer(new QTimer(this))
+  mTimer(new QTimer(this))
 {
     ui->setupUi(this);
 
@@ -24,92 +22,112 @@ ProcessesPage::ProcessesPage(QWidget *parent) :
 
 void ProcessesPage::init()
 {
+    mHeaders = QStringList {
+        "PID", tr("Resident Memory"), tr("%Memory"), tr("Virtual Memory"),
+        tr("User"), "%CPU", tr("Start Time"), tr("State"), tr("Group"),
+        tr("Nice"), tr("CPU Time"), tr("Session"), tr("Process")
+    };
+
     // slider settings
-    ui->refreshSlider->setRange(1, 10);
-    ui->refreshSlider->setPageStep(1);
-    ui->refreshSlider->setSingleStep(1);
+    ui->sliderRefresh->setRange(1, 10);
+    ui->sliderRefresh->setPageStep(1);
+    ui->sliderRefresh->setSingleStep(1);
 
     // Table settings
-    sortModel->setSourceModel(model);
+    mSortFilterModel->setSourceModel(mItemModel);
 
-    model->setHorizontalHeaderLabels(headers);
+    mItemModel->setHorizontalHeaderLabels(mHeaders);
 
-    ui->processTable->setModel(sortModel);
-    sortModel->setSortRole(1);
-    sortModel->setDynamicSortFilter(true);
-    sortModel->sort(5, Qt::SortOrder::DescendingOrder);
+    ui->tableProcess->setModel(mSortFilterModel);
+    mSortFilterModel->setSortRole(1);
+    mSortFilterModel->setDynamicSortFilter(true);
+    mSortFilterModel->sort(5, Qt::SortOrder::DescendingOrder);
 
-    ui->processTable->horizontalHeader()->setSectionsMovable(true);
-    ui->processTable->horizontalHeader()->setFixedHeight(36);
-    ui->processTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    ui->processTable->horizontalHeader()->setCursor(Qt::PointingHandCursor);
-
-    ui->processTable->horizontalHeader()->resizeSection(0, 70);
+    ui->tableProcess->horizontalHeader()->setSectionsMovable(true);
+    ui->tableProcess->horizontalHeader()->setFixedHeight(36);
+    ui->tableProcess->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    ui->tableProcess->horizontalHeader()->setCursor(Qt::PointingHandCursor);
+    ui->tableProcess->horizontalHeader()->resizeSection(0, 70);
 
     loadProcesses();
 
-    connect(timer, &QTimer::timeout, this, &ProcessesPage::loadProcesses);
-    timer->setInterval(1000);
-    timer->start();
+    connect(mTimer, &QTimer::timeout, this, &ProcessesPage::loadProcesses);
+    mTimer->setInterval(1000);
+    mTimer->start();
 
-    ui->processTable->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
+    ui->tableProcess->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    connect(ui->processTable->horizontalHeader(), SIGNAL(customContextMenuRequested(const QPoint&)),
-        this, SLOT(on_processTable_customContextMenuRequested(const QPoint&)));
+    connect(ui->tableProcess->horizontalHeader(), SIGNAL(customContextMenuRequested(const QPoint&)),
+        this, SLOT(on_tableProcess_customContextMenuRequested(const QPoint&)));
 
     loadHeaderMenu();
+
+    Utilities::addDropShadow(ui->btnEndProcess, 60);
+    Utilities::addDropShadow(ui->tableProcess, 55);
 }
 
 void ProcessesPage::loadHeaderMenu()
 {
     int i = 0;
-    for (const QString &kolon : headers) {
-        QAction *action = new QAction(kolon);
+    QList<QAction*> actionList;
+    actionList.reserve(mHeaders.size());
+    for (const QString &header : mHeaders) {
+        QAction *action = new QAction(header,&mHeaderMenu);
         action->setCheckable(true);
         action->setChecked(true);
         action->setData(i++);
+        actionList.push_back(action);
 
-        headerMenu.addAction(action);
     }
+    mHeaderMenu.addActions(actionList);
+    // exclude headers
+    QList<int> hiddenHeaders = { 3, 6, 7, 8, 9, 10, 11 };
 
-    QList<int> hiddenHeaders = { 6, 7, 8, 9, 10, 11, 12 };
-    QList<QAction*> actions = headerMenu.actions();
-    for (const int &i : hiddenHeaders) {
-        ui->processTable->horizontalHeader()->setSectionHidden(i, true);
-        actions.at(i)->setChecked(false);
+    QList<QAction*> actions = mHeaderMenu.actions();
+    for (const int i : hiddenHeaders) {
+        if (i < mHeaders.count()) {
+            ui->tableProcess->horizontalHeader()->setSectionHidden(i, true);
+            actions.at(i)->setChecked(false);
+        }
     }
 }
 
 void ProcessesPage::loadProcesses()
 {
-    QModelIndexList selecteds =  ui->processTable->selectionModel()->selectedRows();
+    QModelIndexList selecteds = ui->tableProcess->selectionModel()->selectedRows();
 
-    model->removeRows(0, model->rowCount());
+    mItemModel->removeRows(0, mItemModel->rowCount());
 
     im->updateProcesses();
 
-    for (const Process &proc : im->getProcesses()) {
-        if (ui->allProcessesCheck->isChecked()) {
-            model->appendRow(createRow(proc));
+    QList<Process> processes = im->getProcesses();
+    QString username = im->getUserName();
+
+    if (ui->checkAllProcesses->isChecked()) {
+        for (const Process &proc : processes) {
+            mItemModel->appendRow(createRow(proc));
         }
-        else {
-            if (im->getUserName() == proc.getUname())
-                model->appendRow(createRow(proc));
+    } else  {
+        for (const Process &proc : processes) {
+            if (username == proc.getUname()) {
+                mItemModel->appendRow(createRow(proc));
+            }
         }
     }
 
-    ui->processTitleLbl->setText(tr("Processes (%1)").arg(model->rowCount()));
+    ui->lblProcessTitle->setText(tr("Processes (%1)").arg(mItemModel->rowCount()));
 
     // selected item
-    if(! selecteds.isEmpty()) {
-        seletedRowModel = selecteds.first();
+    if (! selecteds.isEmpty()) {
+        mSeletedRowModel = selecteds.first();
 
-        for (int i = 0; i < sortModel->rowCount(); ++i) {
-            if (sortModel->index(i, 0).data(1).toInt() == seletedRowModel.data(1).toInt())
-                ui->processTable->selectRow(i);
+        for (int i = 0; i < mSortFilterModel->rowCount(); ++i) {
+            if (mSortFilterModel->index(i, 0).data(1).toInt() == mSeletedRowModel.data(1).toInt()) {
+                ui->tableProcess->selectRow(i);
+            }
         }
     } else {
-        seletedRowModel = QModelIndex();
+        mSeletedRowModel = QModelIndex();
     }
 }
 
@@ -167,60 +185,57 @@ QList<QStandardItem*> ProcessesPage::createRow(const Process &proc)
     session_i->setData(proc.getSession(), data);
     session_i->setData(proc.getSession(), Qt::ToolTipRole);
 
-    QStandardItem *seat_i = new QStandardItem(proc.getSeat());
-    seat_i->setData(proc.getSeat(), data);
-    seat_i->setData(proc.getSeat(), Qt::ToolTipRole);
-
     QStandardItem *cmd_i = new QStandardItem(proc.getCmd());
     cmd_i->setData(proc.getCmd(), data);
-    cmd_i->setData(proc.getCmd(), Qt::ToolTipRole);
+    cmd_i->setData(QString("<p>%1</p>").arg(proc.getCmd()), Qt::ToolTipRole);
 
     row << pid_i << rss_i << pmem_i << vsize_i << uname_i << pcpu_i
         << starttime_i << state_i << group_i << nice_i << cpuTime_i
-        << session_i << seat_i<< cmd_i;
+        << session_i << cmd_i;
 
     return row;
 }
 
-void ProcessesPage::on_processSearchBox_textChanged(const QString &val)
+void ProcessesPage::on_txtProcessSearch_textChanged(const QString &val)
 {
     QRegExp query(val, Qt::CaseInsensitive, QRegExp::Wildcard);
 
-    sortModel->setFilterKeyColumn(headers.count() - 1); // process name
-    sortModel->setFilterRegExp(query);
+    mSortFilterModel->setFilterKeyColumn(mHeaders.count() - 1); // process name
+    mSortFilterModel->setFilterRegExp(query);
 }
 
-void ProcessesPage::on_refreshSlider_valueChanged(const int &i)
+void ProcessesPage::on_sliderRefresh_valueChanged(const int &i)
 {
-    ui->refreshLabel->setText(tr("Refresh (%1)").arg(i));
-    timer->setInterval(i * 1000);
+    ui->lblRefresh->setText(tr("Refresh (%1)").arg(i));
+    mTimer->setInterval(i * 1000);
 }
 
-void ProcessesPage::on_endProcessBtn_clicked()
+void ProcessesPage::on_btnEndProcess_clicked()
 {
-    pid_t pid = seletedRowModel.data(1).toInt();
+    pid_t pid = mSeletedRowModel.data(1).toInt();
 
-    QString selectedUname = sortModel->index(seletedRowModel.row(), 4).data(1).toString();
+    if (pid) {
+        QString selectedUname = mSortFilterModel->index(mSeletedRowModel.row(), 4).data(1).toString();
 
-    try {
-        if (pid) {
-            if (selectedUname == im->getUserName())
+        try {
+            if (selectedUname == im->getUserName()) {
                 CommandUtil::exec("kill", { QString::number(pid) });
-            else
+            } else {
                 CommandUtil::sudoExec("kill", { QString::number(pid) });
+            }
+        } catch (QString &ex) {
+            qCritical() << ex;
         }
-    } catch (QString &ex) {
-        qCritical() << ex;
     }
 }
 
-void ProcessesPage::on_processTable_customContextMenuRequested(const QPoint &pos)
+void ProcessesPage::on_tableProcess_customContextMenuRequested(const QPoint &pos)
 {
-    QPoint globalPos = ui->processTable->mapToGlobal(pos);
+    QPoint globalPos = ui->tableProcess->mapToGlobal(pos);
 
-    QAction *action = headerMenu.exec(globalPos);
+    QAction *action = mHeaderMenu.exec(globalPos);
 
-    if (action)
-        ui->processTable->horizontalHeader()->setSectionHidden(action->data().toInt(),
-                                                               ! action->isChecked());
+    if (action) {
+        ui->tableProcess->horizontalHeader()->setSectionHidden(action->data().toInt(), ! action->isChecked());
+    }
 }

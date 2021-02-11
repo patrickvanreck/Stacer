@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QtCharts>
 #include "Managers/app_manager.h"
+#include "signal_mapper.h"
 
 namespace Ui {
     class CircleBar;
@@ -18,7 +19,7 @@ public:
     ~CircleBar();
 
 public slots:
-    void setValue(int value, QString valueText);
+    void setValue(const int &value, const QString &valueText);
 
 private slots:
     void init();
@@ -27,11 +28,11 @@ private:
     Ui::CircleBar *ui;
 
 private:
-    QStringList colors;
+    QStringList mColors;
 
-    QChart *chart;
-    QChartView *chartView;
-    QPieSeries *series;
+    QChart *mChart;
+    QChartView *mChartView;
+    QPieSeries *mSeries;
 };
 
 #endif // CIRCLEBAR_H

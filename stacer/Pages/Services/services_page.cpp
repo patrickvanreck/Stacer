@@ -2,7 +2,8 @@
 #include "ui_services_page.h"
 #include "service_item.h"
 
-#include "Managers/tool_manager.h"
+#include "utilities.h"
+#include <QtConcurrent>
 
 ServicesPage::~ServicesPage()
 {
@@ -20,35 +21,69 @@ ServicesPage::ServicesPage(QWidget *parent) :
 
 void ServicesPage::init()
 {
-    loadServices();
+    connect(this, &ServicesPage::loadServicesS, this, &ServicesPage::loadServices);
+    QtConcurrent::run(this, &ServicesPage::getServices);
 
-    if(ui->serviceListWidget->count()) {
-        ui->notFoundWidget->hide();
-    }
-    else { // list widget is empty show not found
-        ui->notFoundWidget->show();
-        ui->serviceListWidget->hide();
-    }
+    ui->cmbRunningStatus->addItems({ tr("Running Status"), tr("Running"), tr("Not Running") });
+    ui->cmbStartupStatus->addItems({ tr("Startup Status"), tr("Enabled"), tr("Disabled") });
+
+    Utilities::addDropShadow(ui->cmbRunningStatus, 30);
+    Utilities::addDropShadow(ui->cmbStartupStatus, 30);
+}
+
+void ServicesPage::getServices()
+{
+    this->mServices = ToolManager::ins()->getServices();
+    emit loadServicesS();
 }
 
 void ServicesPage::loadServices()
 {
-    for (const Service &s : ToolManager::ins()->getServices()) {
+    ui->listWidgetServices->clear();
 
-        ServiceItem *service = new ServiceItem(s.name, s.status, s.active, this);
+    int runningIndex = ui->cmbRunningStatus->currentIndex();
+    int startupIndex = ui->cmbStartupStatus->currentIndex();
 
-        QListWidgetItem *item = new QListWidgetItem(ui->serviceListWidget);
+    bool runningStatus = runningIndex == 1;
+    bool startupStatus = startupIndex == 1;
 
-        item->setSizeHint(service->sizeHint());
+    for (const Service s : mServices) {
+        bool runningFilter = runningIndex != 0 ? s.active == runningStatus : true;
+        bool startupFilter = startupIndex != 0 ? s.status == startupStatus : true;
 
-        ui->serviceListWidget->setItemWidget(item, service);
+        if (runningFilter && startupFilter) {
+            ServiceItem *service = new ServiceItem(s.name, s.description, s.status, s.active);
+
+            QListWidgetItem *item = new QListWidgetItem(ui->listWidgetServices);
+
+            item->setSizeHint(service->sizeHint());
+
+            ui->listWidgetServices->setItemWidget(item, service);
+        }
     }
 
-    setAppCount();
+    setServiceCount();
+
+    bool isListEmpty = ui->listWidgetServices->count() == 0;
+
+    ui->listWidgetServices->setVisible(! isListEmpty);
+    ui->notFoundWidget->setVisible(isListEmpty);
 }
 
-void ServicesPage::setAppCount()
+void ServicesPage::setServiceCount()
 {
-    ui->servicesTitle->setText(tr("System Services (%1)")
-                               .arg(ui->serviceListWidget->count()));
+    ui->lblServicesTitle->setText(tr("System Services (%1)")
+                               .arg(ui->listWidgetServices->count()));
+}
+
+void ServicesPage::on_cmbRunningStatus_currentIndexChanged(int index)
+{
+    Q_UNUSED(index);
+    loadServices();
+}
+
+void ServicesPage::on_cmbStartupStatus_currentIndexChanged(int index)
+{
+    Q_UNUSED(index);
+    loadServices();
 }

@@ -3,32 +3,37 @@
 
 #include "Utils/command_util.h"
 #include "Utils/file_util.h"
+#include <QStorageInfo>
+#include <QSet>
+#include "stacer-core_global.h"
 
 #define PROC_MOUNTS "/proc/mounts"
 
 class Disk;
 
-#include "stacer-core_global.h"
-
 class STACERCORESHARED_EXPORT DiskInfo
 {
 public:
-    DiskInfo();
-
-    QList<Disk> getDisks() const;
+    QList<Disk*> getDisks() const;
     void updateDiskInfo();
+    QList<quint64> getDiskIO() const;
+    QStringList getDiskNames() const;
+    QList<QString> fileSystemTypes();
+    QList<QString> devices();
+    ~DiskInfo();
 
 private:
-    QList<Disk> disks;
+    QList<Disk*> disks;
 };
 
-class Disk {
-public:
-    Disk() {}
-
+struct Disk {
+    QString name;
+    QString device;
+    QString fileSystemType;
     quint64 size;
     quint64 free;
     quint64 used;
 };
+
 
 #endif // DISKINFO_H

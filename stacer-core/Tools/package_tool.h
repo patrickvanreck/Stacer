@@ -21,8 +21,6 @@ public:
     };
 
 public:
-    PackageTool();
-
     // APT
     static QFileInfoList getDpkgPackageCaches();
     static QStringList getDpkgPackages();
@@ -37,6 +35,10 @@ public:
     static QFileInfoList getPacmanPackageCaches();
     static QStringList getPacmanPackages();
     static bool pacmanRemovePackages(QStringList packages);
+
+    // Snap
+    static QStringList getSnapPackages();
+    static bool snapRemovePackages(QStringList packages);
 
     static const PackageTools currentPackageTool;
 };

@@ -2,58 +2,52 @@
 #define APP_MANAGER_H
 
 #include <QApplication>
-#include <QObject>
 #include <QMap>
-#include <QStandardPaths>
 #include <QSettings>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QTranslator>
-#include <QFontDatabase>
+#include <QSystemTrayIcon>
 
-#include <Utils/file_util.h>
+#include "Utils/file_util.h"
+#include "Managers/setting_manager.h"
+#include "signal_mapper.h"
 
-#include <QDebug>
-
-#define THEME_PROP "ThemeName"
-#define LANG_PROP "Language"
-
-class AppManager : public QObject
+class AppManager
 {
-    Q_OBJECT
+
 public:
     static AppManager *ins();
 
-    QString getLanguageCode() const;
-    void setLanguage(const QString &value);
     QMap<QString, QString> getLanguageList() const;
     void loadLanguageList();
-    QString getStylesheetFileContent() const;
+
+//    QMap<QString, QString> getThemeList() const;
+//    void loadThemeList();
 
     void updateStylesheet();
-    void setThemeName(const QString &value);
-    QString getThemeName() const;
-    QMap<QString, QString> getThemeList() const;
-    void loadThemeList();
+    QString getStylesheetFileContent() const;
+
     QSettings *getStyleValues() const;
 
-signals:
-    void changedTheme();
+    QSystemTrayIcon *getTrayIcon();
 
 private:
-    static AppManager *_instance;
-    explicit AppManager(QObject *parent = nullptr);
+    static AppManager *instance;
+    AppManager();
 
 private:
-    QTranslator translator;
-    QString configPath;
-    QString themeName;
-    QSettings *settings;
-    QSettings *styleValues;
-    QMap<QString, QString> languageList;
-    QMap<QString, QString> themeList;
-    QString stylesheetFileContent;
+    QTranslator mTranslator;
+    QSystemTrayIcon *mTrayIcon;
+
+    QSettings *mStyleValues;
+
+    QMap<QString, QString> mLanguageList;
+//    QMap<QString, QString> mThemeList;
+    QString mStylesheetFileContent;
+
+    SettingManager *mSettingManager;
 };
 
 #endif // APP_MANAGER_H

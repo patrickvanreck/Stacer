@@ -1,7 +1,8 @@
 #include "app.h"
 #include "ui_app.h"
-
-#include "Managers/app_manager.h"
+#include "utilities.h"
+#include <QStyle>
+#include <QDebug>
 
 App::~App()
 {
@@ -11,14 +12,9 @@ App::~App()
 App::App(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::App),
-    dashboardPage(new DashboardPage(this)),
-    startupAppsPage(new StartupAppsPage(this)),
-    systemCleanerPage(new SystemCleanerPage(this)),
-    servicesPage(new ServicesPage(this)),
-    processPage(new ProcessesPage(this)),
-    uninstallerPage(new UninstallerPage(this)),
-    resourcesPage(new ResourcesPage(this)),
-    settingsPage(new SettingsPage(this))
+    mSlidingStacked(new SlidingStackedWidget(this)),
+    mTrayIcon(AppManager::ins()->getTrayIcon()),
+    mTrayMenu(new QMenu(this))
 {
     ui->setupUi(this);
 
@@ -28,82 +24,249 @@ App::App(QWidget *parent) :
 void App::init()
 {
     setGeometry(
-        QStyle::alignedRect(
-            Qt::LeftToRight,
-            Qt::AlignCenter,
-            size(),
-            qApp->desktop()->availableGeometry())
+        QStyle::alignedRect(Qt::LeftToRight, Qt::AlignCenter,
+            size(), qApp->desktop()->availableGeometry())
     );
 
     // form settings
     ui->horizontalLayout->setContentsMargins(0,0,0,0);
     ui->horizontalLayout->setSpacing(0);
 
-    // icon sizes of the buttons on the sidebar 30x30
-    for (QPushButton *btn : ui->sidebar->findChildren<QPushButton*>())
-        btn->setIconSize(QSize(26, 26));
+    dashboardPage = new DashboardPage(mSlidingStacked);
+    startupAppsPage = new StartupAppsPage(mSlidingStacked);
+    searchPage = new SearchPage(mSlidingStacked);
+    systemCleanerPage = new SystemCleanerPage(mSlidingStacked);
+    servicesPage = new ServicesPage(mSlidingStacked);
+    processPage = new ProcessesPage(mSlidingStacked);
+    helpersPage = new HelpersPage(mSlidingStacked);
+    uninstallerPage = new UninstallerPage(mSlidingStacked);
+    resourcesPage = new ResourcesPage(mSlidingStacked);
+    settingsPage = new SettingsPage(mSlidingStacked);
+
+    ui->pageContentLayout->addWidget(mSlidingStacked);
+
+    mListPages = {
+        dashboardPage, startupAppsPage, systemCleanerPage, searchPage, servicesPage,
+        processPage, uninstallerPage, resourcesPage, helpersPage, settingsPage
+    };
+
+    mListSidebarButtons = {
+        ui->btnDash, ui->btnStartupApps, ui->btnSystemCleaner, ui->btnSearch, ui->btnServices,
+        ui->btnProcesses, ui->btnHelpers, ui->btnUninstaller, ui->btnResources, ui->btnSettings
+    };
+
+    // APT SOURCE MANAGER
+    if (ToolManager::ins()->checkSourceRepository()) {
+        aptSourceManagerPage = new APTSourceManagerPage(mSlidingStacked);
+        mListPages.insert(7, aptSourceManagerPage);
+        mListSidebarButtons.insert(7, ui->btnAptSourceManager);
+    } else {
+        ui->btnAptSourceManager->hide();
+    }
+
+    // GNOME SETTINGS
+    bool checkDesktopSession = QString(qgetenv("DESKTOP_SESSION")).contains(QRegExp("ubuntu", Qt::CaseInsensitive));
+    bool checkDistribution = SystemInfo().getDistribution().contains(QRegExp("ubuntu", Qt::CaseInsensitive));;
+
+    if (checkDesktopSession || checkDistribution) {
+        gnomeSettingsPage = new GnomeSettingsPage(mSlidingStacked);
+        mListPages.insert(8, gnomeSettingsPage);
+        mListSidebarButtons.insert(8, ui->btnGnomeSettings);
+    } else {
+        ui->btnGnomeSettings->hide();
+    }
 
     // add pages
-    ui->pageStacked->addWidget(dashboardPage);
-    ui->pageStacked->addWidget(startupAppsPage);
-    ui->pageStacked->addWidget(systemCleanerPage);
-    ui->pageStacked->addWidget(servicesPage);
-    ui->pageStacked->addWidget(processPage);
-    ui->pageStacked->addWidget(uninstallerPage);
-    ui->pageStacked->addWidget(resourcesPage);
-    ui->pageStacked->addWidget(settingsPage);
+    for (QWidget *page: mListPages) {
+        mSlidingStacked->addWidget(page);
+    }
 
-    on_dashBtn_clicked();
+    AppManager::ins()->updateStylesheet();
+
+    Utilities::addDropShadow(ui->sidebar, 60);
+
+    // set start page
+    clickSidebarButton(SettingManager::ins()->getStartPage());
+
+    createTrayActions();
+
+    mTrayIcon->show();
+
+    createQuitMessageBox();
 }
 
-void App::pageClick(QPushButton *btn, QWidget *w, QString title)
+void App::createQuitMessageBox()
 {
-    // all button checked false
-    for (QPushButton *b : ui->sidebar->findChildren<QPushButton*>())
-        b->setChecked(false);
-    btn->setChecked(true); // clicked button set active style
-    AppManager::ins()->updateStylesheet(); // update style
+    mBtnQuit = new QPushButton(tr("Quit"), this);
+    mBtnQuit->setAccessibleName("danger");
+    mBtnContinue = new QPushButton(tr("Continue"), this);
+    mBtnContinue->setAccessibleName("primary");
+    mQuitMsgBox = new QMessageBox(this);
+    QCheckBox *check = new QCheckBox("Don't ask again.");
+    check->setAccessibleName("circle");
+    mQuitMsgBox->setWindowTitle(tr("Quit"));
+    mQuitMsgBox->setText(tr("Will the program continue to work in the system tray?"));
+    mQuitMsgBox->addButton(mBtnQuit, QMessageBox::YesRole);
+    mQuitMsgBox->addButton(mBtnContinue, QMessageBox::NoRole);
+    mQuitMsgBox->setCheckBox(check);
 
-    ui->pageTitle->setText(title);
-    ui->pageStacked->setCurrentWidget(w);
+    connect(check, &QCheckBox::toggled, [this](bool checked) {
+        SettingManager::ins()->setAppQuitDialogDontAsk(checked);
+    });
 }
 
-void App::on_dashBtn_clicked()
+void App::closeEvent(QCloseEvent *event)
 {
-    pageClick(ui->dashBtn, dashboardPage, tr("Dashboard"));
+    if (SettingManager::ins()->getAppQuitDialogDontAsk()) {
+        if (SettingManager::ins()->getAppQuitDialogChoice() == "close") {
+            event->accept();
+        } else {
+            event->ignore();
+            hide();
+        }
+    } else {
+        mQuitMsgBox->exec();
+        if (mQuitMsgBox->clickedButton() == mBtnContinue) {
+            SettingManager::ins()->setAppQuitDialogChoice("hide");
+            event->ignore();
+            hide();
+        } else if (mQuitMsgBox->clickedButton() == mBtnQuit) {
+            SettingManager::ins()->setAppQuitDialogChoice("close");
+            event->accept();
+        } else {
+            event->ignore();
+        }
+    }
 }
 
-void App::on_systemCleanerBtn_clicked()
+void App::createTrayActions()
 {
-    pageClick(ui->systemCleanerBtn, systemCleanerPage, tr("System Cleaner"));
+    for (QPushButton *button: mListSidebarButtons) {
+        QString toolTip = button->toolTip();
+        QAction *action = new QAction(toolTip, this);
+        connect(action, &QAction::triggered, [=] {
+            clickSidebarButton(toolTip, true);
+        });
+        mTrayMenu->addAction(action);
+    }
+
+    mTrayMenu->addSeparator();
+
+    QAction *quitAction = new QAction(tr("Quit"), this);
+    connect(quitAction, &QAction::triggered, [=] {qApp->quit();});
+    mTrayMenu->addAction(quitAction);
+
+    mTrayIcon->setContextMenu(mTrayMenu);
 }
 
-void App::on_startupAppsBtn_clicked()
+void App::clickSidebarButton(QString pageTitle, bool isShow)
 {
-    pageClick(ui->startupAppsBtn, startupAppsPage, tr("System Startup Apps"));
+    QWidget *selectedWidget = getPageByTitle(pageTitle);
+    if (selectedWidget) {
+        pageClick(selectedWidget, !isShow);
+        checkSidebarButtonByTooltip(pageTitle);
+    } else {
+        pageClick(mListPages.first());
+    }
+    setVisible(isShow);
+    if (isShow) activateWindow();
 }
 
-void App::on_servicesBtn_clicked()
+void App::checkSidebarButtonByTooltip(const QString &text)
 {
-    pageClick(ui->servicesBtn, servicesPage, tr("System Services"));
+    for (QPushButton *button: mListSidebarButtons) {
+        if (button->toolTip() == text) {
+            button->setChecked(true);
+        }
+    }
 }
 
-void App::on_uninstallerBtn_clicked()
+QWidget* App::getPageByTitle(const QString &title)
 {
-    pageClick(ui->uninstallerBtn, uninstallerPage, tr("Uninstaller"));
+    for (QWidget *page: mListPages) {
+        if (page->windowTitle() == title) {
+            return page;
+        }
+    }
+    return nullptr;
 }
 
-void App::on_resourcesBtn_clicked()
+void App::pageClick(QWidget *widget, bool slide)
 {
-    pageClick(ui->resourcesBtn, resourcesPage, tr("Resources"));
+    if (widget) {
+        ui->pageTitle->setText(widget->windowTitle());
+        if (slide) {
+            mSlidingStacked->slideInIdx(mSlidingStacked->indexOf(widget));
+        } else {
+            mSlidingStacked->setCurrentWidget(widget);
+        }
+    }
 }
 
-void App::on_processesBtn_clicked()
+void App::on_btnDash_clicked()
 {
-    pageClick(ui->processesBtn, processPage, tr("Processes"));
+    pageClick(dashboardPage);
 }
 
-void App::on_settingsBtn_clicked()
+void App::on_btnStartupApps_clicked()
 {
-    pageClick(ui->settingsBtn, settingsPage, tr("Settings"));
+    pageClick(startupAppsPage);
+}
+
+void App::on_btnSystemCleaner_clicked()
+{
+    pageClick(systemCleanerPage);
+}
+
+void App::on_btnSearch_clicked()
+{
+    pageClick(searchPage);
+}
+
+void App::on_btnServices_clicked()
+{
+    pageClick(servicesPage);
+}
+
+void App::on_btnUninstaller_clicked()
+{
+    pageClick(uninstallerPage);
+}
+
+void App::on_btnProcesses_clicked()
+{
+    pageClick(processPage);
+}
+
+void App::on_btnResources_clicked()
+{
+    pageClick(resourcesPage);
+}
+
+void App::on_btnHelpers_clicked()
+{
+    pageClick(helpersPage);
+}
+
+void App::on_btnAptSourceManager_clicked()
+{
+    pageClick(aptSourceManagerPage);
+}
+
+void App::on_btnGnomeSettings_clicked()
+{
+    pageClick(gnomeSettingsPage);
+}
+
+void App::on_btnSettings_clicked()
+{
+    pageClick(settingsPage);
+}
+
+void App::on_btnFeedback_clicked()
+{
+    if (feedback.isNull()) {
+        feedback = QSharedPointer<Feedback>(new Feedback(this));
+    }
+    feedback->show();
 }

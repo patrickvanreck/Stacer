@@ -1,30 +1,46 @@
 #include "system_info.h"
 
 #include <QObject>
+#include <iostream>
 
 SystemInfo::SystemInfo()
 {
-    QStringList lines = FileUtil::readListFromFile(PROC_CPUINFO)
-            .filter(QRegExp("^model name"));
+    QString unknown(QObject::tr("Unknown"));
+    QString model = nullptr;
+    QString speed = nullptr;
 
-    if (! lines.isEmpty()) {
-        QStringList model = lines.first().split(":").at(1).split("@");
+    try{
+        QStringList lines = CommandUtil::exec("bash",{"-c", LSCPU_COMMAND}).split('\n');  //run command in English language (guaratee same behaviour across languages)
 
-        if ( model.count() > 1) {
-            QRegExp regexp("\\s+");
-            QString space(" ");
-            this->cpuModel = model.at(0).trimmed().replace(regexp, space);
-            this->cpuSpeed = model.at(1).trimmed().replace(regexp, space);
+        QRegExp regexp("\\s+");
+        QString space(" ");
+
+        auto filterModel = lines.filter(QRegExp("^Model name"));
+        QString modelLine = filterModel.isEmpty() ? "error missing model:error missing model" : filterModel.first();
+        auto filterSpeed = lines.filter(QRegExp("^CPU max MHz"));
+        QString speedLine = "error:0.0";
+        if (filterSpeed.isEmpty())
+        {
+            // fallback to CPU MHz
+            filterSpeed = lines.filter(QRegExp("^CPU MHz"));
+            speedLine = filterSpeed.isEmpty() ? speedLine : filterSpeed.first();
         }
-    }
-    else {
-        QString unknown(QObject::tr("Unknown"));
+
+        model = modelLine.split(":").last();
+        speed = speedLine.split(":").last();
+
+        model = model.contains('@') ? model.split("@").first() : model; // intel : AMD
+        speed = QString::number(speed.toDouble()/1000.0) + "GHz";
+
+        this->cpuModel = model.trimmed().replace(regexp, space);
+        this->cpuSpeed = speed.trimmed().replace(regexp, space);
+    } catch(QString &ex) {
         this->cpuModel = unknown;
         this->cpuSpeed = unknown;
     }
 
     CpuInfo ci;
-    this->cpuCore = QString::number(ci.getCpuCoreCount());
+    this->cpuCore = QString::number(ci.getCpuPhysicalCoreCount());
 
     // get username
     QString name = qgetenv("USER");
@@ -35,11 +51,11 @@ SystemInfo::SystemInfo()
     try {
         if (name.isEmpty())
             name = CommandUtil::exec("whoami").trimmed();
-    } catch (QString &ex) {
+    } catch (const QString &ex) {
         qCritical() << ex;
     }
 
-    username = name;
+   this->username = name;
 }
 
 QString SystemInfo::getUsername() const
@@ -50,6 +66,30 @@ QString SystemInfo::getUsername() const
 QString SystemInfo::getHostname() const
 {
     return QSysInfo::machineHostName();
+}
+
+QStringList SystemInfo::getUserList() const
+{
+    QStringList passwdUsers = FileUtil::readListFromFile("/etc/passwd");
+    QStringList users;
+
+    for(QString &row: passwdUsers) {
+        users.append(row.split(":").at(0));
+    }
+
+    return users;
+}
+
+QStringList SystemInfo::getGroupList() const
+{
+    QStringList groupFile = FileUtil::readListFromFile("/etc/group");
+    QStringList groups;
+
+    for(QString &row: groupFile) {
+        groups.append(row.split(":").at(0));
+    }
+
+    return groups;
 }
 
 QString SystemInfo::getPlatform() const

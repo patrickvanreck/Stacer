@@ -3,11 +3,14 @@
 
 #include <QWidget>
 #include <QDebug>
+#include <QSharedPointer>
+#include <QAbstractItemModel>
+#include <QFileSystemWatcher>
 
 #include "startup_app.h"
 #include "startup_app_edit.h"
 
-#include <Utils/file_util.h>
+#include "Utils/file_util.h"
 
 namespace Ui {
     class StartupAppsPage;
@@ -26,14 +29,19 @@ public slots:
 
 private slots:
     void init();
-    void on_addStartupAppBtn_clicked();
+    void openStartupAppEdit(const QString filePath = QString());
     void setAppCount();
 
 private:
     Ui::StartupAppsPage *ui;
 
 private:
-    StartupAppEdit *startupAppEdit;
+    QSharedPointer<StartupAppEdit> mStartupAppEdit;
+
+    QFileSystemWatcher mFileSystemWatcher;
+    QString mAutostartPath;
+
+    bool checkIfDisabled(const QString& as_path);
 };
 
 #endif // STARTUPAPPSPAGE_H

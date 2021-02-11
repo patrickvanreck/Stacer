@@ -10,15 +10,15 @@
 #include <Info/system_info.h>
 #include <Info/process_info.h>
 
-#include <Utils/format_util.h>
-
 class InfoManager
 {
 public:
     static InfoManager *ins();
 
-    quint8 getCpuCoreCount() const;
+    int getCpuCoreCount() const;
     QList<int> getCpuPercents() const;
+    QList<double> getCpuLoadAvgs() const;
+    double getCpuClock() const;
 
     quint64 getSwapUsed() const;
     quint64 getSwapTotal() const;
@@ -28,7 +28,9 @@ public:
 
     quint64 getRXbytes() const;
     quint64 getTXbytes() const;
-    QList<Disk> getDisks() const;
+
+    QList<Disk *> getDisks() const;
+    QList<quint64> getDiskIO();
     void updateDiskInfo();
 
     QFileInfoList getCrashReports() const;
@@ -38,9 +40,13 @@ public:
     void updateProcesses();
     QList<Process> getProcesses() const;
     QString getUserName() const;
+    QStringList getUserList() const;
+    QStringList getGroupList() const;
+
+    QList<QString> getDevices();
+    QList<QString> getFileSystemTypes();
 private:
-    InfoManager();
-    static InfoManager *_instance;
+    static InfoManager *instance;
 
 private:
     CpuInfo ci;

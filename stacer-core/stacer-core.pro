@@ -6,6 +6,10 @@
 
 QT       -= gui
 
+QT       += core network
+
+CONFIG += c++11
+
 TARGET = stacer-core
 TEMPLATE = lib
 
@@ -34,7 +38,9 @@ SOURCES += \
     Tools/service_tool.cpp \
     Tools/package_tool.cpp \
     Info/process_info.cpp \
-    Info/process.cpp
+    Info/process.cpp \
+    Tools/apt_source_tool.cpp \
+    Tools/gnome_settings_tool.cpp
 
 HEADERS += \
         stacer-core_global.h \ 
@@ -49,7 +55,10 @@ HEADERS += \
     Tools/service_tool.h \
     Tools/package_tool.h \
     Info/process_info.h \
-    Info/process.h
+    Info/process.h \
+    Tools/apt_source_tool.h \
+    Tools/gnome_settings_tool.h \
+    Tools/gnome_schema.h
 
 unix {
     target.path = /usr/lib

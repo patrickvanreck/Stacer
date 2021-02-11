@@ -1,127 +1,97 @@
 #include "app_manager.h"
+#include <QDebug>
 
-AppManager *AppManager::_instance = nullptr;
+AppManager *AppManager::instance = nullptr;
 
 AppManager *AppManager::ins()
 {
-    if (_instance == nullptr) {
-        _instance = new AppManager;
+    if (! instance) {
+        instance = new AppManager;
     }
 
-    return _instance;
+    return instance;
 }
 
-AppManager::AppManager(QObject *parent) : QObject(parent)
+AppManager::AppManager()
 {
-    // font settings
-    QFontDatabase::addApplicationFont(":/static/font/Ubuntu-R.ttf");
+    mSettingManager = SettingManager::ins();
 
-    configPath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
-
-    settings = new QSettings(QString("%1/settings.conf").arg(configPath), QSettings::NativeFormat);
+    mTrayIcon = new QSystemTrayIcon(QIcon(":/static/themes/default/img/sidebar-icons/dash.png"));
 
     loadLanguageList();
 
-    loadThemeList();
+//    loadThemeList();
 
-    themeName = settings->value(THEME_PROP, "default").toString();
-
-    if (translator.load(QString("stacer_%1").arg(getLanguageCode()), qApp->applicationDirPath() + "/translations")) {
-        qApp->installTranslator(&translator);
-        (getLanguageCode() == "ar") ? qApp->setLayoutDirection(Qt::RightToLeft) : qApp->setLayoutDirection(Qt::LeftToRight);
-    } else {
-        qCritical() << "Translator could not load.";
+    if (mTranslator.load(QString("stacer_%1").arg(mSettingManager->getLanguage()), qApp->applicationDirPath() + "/translations")) {
+        qApp->installTranslator(&mTranslator);
+        (mSettingManager->getLanguage() == "ar") ? qApp->setLayoutDirection(Qt::RightToLeft) : qApp->setLayoutDirection(Qt::LeftToRight);
     }
+}
 
-    styleValues = new QSettings(QString(":/static/themes/%1/style/values.ini").arg(themeName), QSettings::NativeFormat);
+QSystemTrayIcon *AppManager::getTrayIcon()
+{
+    return mTrayIcon;
 }
 
 QSettings *AppManager::getStyleValues() const
 {
-    return styleValues;
+    return mStyleValues;
 }
 
-/************
- * LANGUAGE
- ***********/
 void AppManager::loadLanguageList()
 {
-    QJsonArray langs = QJsonDocument::fromJson(FileUtil::readStringFromFile(":/static/languages.json").toUtf8())
-            .array();
+    QByteArray lanuagesJson = FileUtil::readStringFromFile(":/static/languages.json").toUtf8();
+    QJsonArray lanuages = QJsonDocument::fromJson(lanuagesJson).array();
 
-    for (int i = 0; i < langs.count(); ++i) {
+    for (int i = 0; i < lanuages.count(); ++i) {
 
-        QJsonObject ob = langs.at(i).toObject();
+        QJsonObject ob = lanuages.at(i).toObject();
 
-        languageList.insert(ob["value"].toString(), ob["text"].toString());
+        mLanguageList.insert(ob["value"].toString(), ob["text"].toString());
     }
-}
-
-void AppManager::setLanguage(const QString &value)
-{
-    settings->setValue(LANG_PROP, value);
-}
-
-QString AppManager::getLanguageCode() const
-{
-    return settings->value(LANG_PROP, "en").toString();
 }
 
 QMap<QString, QString> AppManager::getLanguageList() const
 {
-    return languageList;
+    return mLanguageList;
 }
 
-/************
- * THEME
- ***********/
-void AppManager::loadThemeList()
-{
-    QJsonArray themes = QJsonDocument::fromJson(FileUtil::readStringFromFile(":/static/themes.json").toUtf8())
-            .array();
+//void AppManager::loadThemeList()
+//{
+//    QByteArray themesJson = FileUtil::readStringFromFile(":/static/themes.json").toUtf8();
+//    QJsonArray themes = QJsonDocument::fromJson(themesJson).array();
 
-    for (int i = 0; i < themes.count(); ++i) {
+//    for (int i = 0; i < themes.count(); ++i) {
 
-        QJsonObject ob = themes.at(i).toObject();
+//        QJsonObject ob = themes.at(i).toObject();
 
-        themeList.insert(ob["value"].toString(), ob["text"].toString());
-    }
-}
+//        mThemeList.insert(ob["value"].toString(), ob["text"].toString());
+//    }
+//}
 
-QMap<QString, QString> AppManager::getThemeList() const
-{
-    return themeList;
-}
-
-QString AppManager::getThemeName() const
-{
-    return themeName;
-}
+//QMap<QString, QString> AppManager::getThemeList() const
+//{
+//    return mThemeList;
+//}
 
 void AppManager::updateStylesheet()
 {
-    styleValues = new QSettings(QString(":/static/themes/%1/style/values.ini").arg(themeName), QSettings::NativeFormat);
+    QString appThemePath = QString(":/static/themes/%1/style").arg(mSettingManager->getThemeName());
+    mStyleValues = new QSettings(QString("%1/values.ini").arg(appThemePath), QSettings::IniFormat);
 
-    stylesheetFileContent = FileUtil::readStringFromFile(QString(":/static/themes/%1/style/style.qss").arg(themeName));
+    mStylesheetFileContent = FileUtil::readStringFromFile(QString("%1/style.qss").arg(appThemePath));
 
-    // set values
-    for (const QString &key : styleValues->allKeys()) {
-        stylesheetFileContent.replace(key, styleValues->value(key).toString());
+    // set values example: @color01 => #fff
+    for (const QString &key : mStyleValues->allKeys()) {
+        mStylesheetFileContent.replace(key, mStyleValues->value(key).toString());
     }
 
-    qApp->setStyleSheet(stylesheetFileContent);
+    qApp->setStyleSheet(mStylesheetFileContent);
 
-    emit changedTheme();
-}
-
-void AppManager::setThemeName(const QString &value)
-{
-    themeName = value;
-
-    settings->setValue(THEME_PROP, value);
+    emit SignalMapper::ins()->sigChangedAppTheme();
 }
 
 QString AppManager::getStylesheetFileContent() const
 {
-    return stylesheetFileContent;
+    return mStylesheetFileContent;
 }

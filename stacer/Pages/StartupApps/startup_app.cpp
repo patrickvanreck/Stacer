@@ -1,83 +1,94 @@
 #include "startup_app.h"
 #include "ui_startup_app.h"
+#include "utilities.h"
 
 StartupApp::~StartupApp()
 {
     delete ui;
 }
 
-StartupApp::StartupApp(const QString &appName, bool enabled, const QString &filePath, QWidget *parent) :
+StartupApp::StartupApp(const QString &startupAppName, bool enabled, const QString &filePath, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::StartupApp),
-    startupAppEdit(new StartupAppEdit(this)),
-    appName(appName),
-    enabled(enabled),
-    filePath(filePath)
+    mStartupAppName(startupAppName),
+    mEnabled(enabled),
+    mFilePath(filePath)
 {
     ui->setupUi(this);
 
-    ui->appName->setText(appName);
-    ui->startupCheck->setChecked(enabled);
+    ui->lblStartupAppName->setText(startupAppName);
+    ui->checkStartup->setChecked(enabled);
 
-    ui->deleteAppBtn->setToolTip(tr("Delete"));
-    ui->editAppBtn->setToolTip(tr("Edit"));
-
-    connect(startupAppEdit, &StartupAppEdit::closeWindow, (StartupAppsPage*)parent, &StartupAppsPage::loadApps);
+    Utilities::addDropShadow(this, 50);
 }
 
-void StartupApp::on_startupCheck_clicked(bool status)
+void StartupApp::on_checkStartup_clicked(bool status)
 {
-    QStringList lines = FileUtil::readListFromFile(filePath);
+    QStringList lines = FileUtil::readListFromFile(mFilePath);
 
-    int pos = lines.indexOf(QRegExp("X-GNOME-Autostart-enabled=.*"));
+    // Hidden=[true|false]
+    int pos = lines.indexOf(HIDDEN_REG);
 
-    if(pos != -1)
-    {
-        lines.replace(pos, QString("X-GNOME-Autostart-enabled=%1").arg(status ? "true" : "false"));
+    QString _status = status ? "true" : "false";
 
-        FileUtil::writeFile(filePath, lines.join("\n"));
+    if (pos != -1) {
+        _status = status ? "false" : "true";
+        lines.replace(pos, QString("Hidden=%1").arg(_status));
+    } else {
+        // X-GNOME-Autostart-enabled=[true|false]
+        pos = lines.indexOf(GNOME_ENABLED_REG);
+        if (pos != -1) {
+            lines.replace(pos, QString("X-GNOME-Autostart-enabled=%1").arg(_status));
+        }
+    }
+
+    if (pos == -1) {
+        _status = status ? "false" : "true";
+        lines.append(QString("Hidden=%1").arg(_status));
+    }
+
+    FileUtil::writeFile(mFilePath, lines.join('\n').append('\n'));
+}
+
+void StartupApp::on_btnDeleteStartupApp_clicked()
+{
+    if (QFile::remove(mFilePath)) {
+        emit deleteAppS();
     }
 }
 
-void StartupApp::on_deleteAppBtn_clicked()
+void StartupApp::on_btnEditStartupApp_clicked()
 {
-    if(QFile::remove(filePath))
-        deleteApp();
-}
-
-void StartupApp::on_editAppBtn_clicked()
-{
-    StartupAppEdit::selectedFilePath = filePath;
-    startupAppEdit->show();
+    emit editStartupAppS(mFilePath);
 }
 
 QString StartupApp::getAppName() const
 {
-    return appName;
+    return mStartupAppName;
 }
 
 void StartupApp::setAppName(const QString &value)
 {
-    appName = value;
+    mStartupAppName = value;
 }
 
 bool StartupApp::getEnabled() const
 {
-    return enabled;
+    return mEnabled;
 }
 
 void StartupApp::setEnabled(bool value)
 {
-    enabled = value;
+    mEnabled = value;
 }
 
 QString StartupApp::getFilePath() const
 {
-    return filePath;
+    return mFilePath;
 }
 
 void StartupApp::setFilePath(const QString &value)
 {
-    filePath = value;
+    mFilePath = value;
 }
 

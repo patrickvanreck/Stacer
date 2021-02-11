@@ -1,10 +1,5 @@
 #include "process.h"
 
-Process::Process()
-{
-
-}
-
 pid_t Process::getPid() const
 {
     return pid;
@@ -133,14 +128,4 @@ QString Process::getSession() const
 void Process::setSession(const QString &value)
 {
     session = value;
-}
-
-QString Process::getSeat() const
-{
-    return seat;
-}
-
-void Process::setSeat(const QString &value)
-{
-    seat = value;
 }

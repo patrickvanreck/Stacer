@@ -3,10 +3,10 @@
 
 #include <QWidget>
 #include <QDebug>
+#include <QSharedPointer>
 #include <Utils/file_util.h>
 
 #include "startup_app_edit.h"
-#include "startup_apps_page.h"
 
 namespace Ui {
     class StartupApp;
@@ -17,7 +17,7 @@ class StartupApp : public QWidget
     Q_OBJECT
 
 public:
-    explicit StartupApp(const QString &appName, bool enabled, const QString &filePath, QWidget *parent = 0);
+    explicit StartupApp(const QString &startupAppName, bool enabled, const QString &filePath, QWidget *parent = 0);
     ~StartupApp();
 
     QString getAppName() const;
@@ -30,22 +30,22 @@ public:
     void setFilePath(const QString &value);
 
 private slots:
-    void on_startupCheck_clicked(bool);
-    void on_deleteAppBtn_clicked();
-    void on_editAppBtn_clicked();
+    void on_checkStartup_clicked(bool);
+    void on_btnDeleteStartupApp_clicked();
+    void on_btnEditStartupApp_clicked();
 
 signals:
-    void deleteApp();
+    void deleteAppS();
+    void editStartupAppS(const QString filePath);
 
 private:
     Ui::StartupApp *ui;
 
 private:
-    StartupAppEdit *startupAppEdit;
-    QString appName;
-    QString appComment;
-    bool enabled;
-    QString filePath;
+    QString mStartupAppName;
+    QString mAppComment;
+    bool mEnabled;
+    QString mFilePath;
 };
 
 #endif // STARTUP_APP_H

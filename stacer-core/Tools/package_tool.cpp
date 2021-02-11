@@ -10,13 +10,8 @@ const PackageTool::PackageTools PackageTool::currentPackageTool =
         CommandUtil::isExecutable("zypper")  ? PackageTool::ZYPPER :
                                                PackageTool::UNKNOWN;
 
-PackageTool::PackageTool()
-{
-
-}
-
 /***********
- * DPKG  /var/cache/yum/development/packages/
+ * DPKG
  ***********/
 QFileInfoList PackageTool::getDpkgPackageCaches()
 {
@@ -32,7 +27,8 @@ QStringList PackageTool::getDpkgPackages()
     try {
         packageList = CommandUtil::exec("bash", {"-c", "dpkg --get-selections 2> /dev/null"})
                 .trimmed()
-                .split("\n");
+                .split('\n')
+                .filter(QRegExp("\\s+install$"));
 
         for (int i = 0; i < packageList.count(); ++i)
             packageList[i] = packageList.at(i).split(QRegExp("\\s+")).first();
@@ -71,7 +67,7 @@ QStringList PackageTool::getRpmPackages()
     try {
         packageList = CommandUtil::exec("bash", {"-c", "rpm -qa 2> /dev/null"})
                 .trimmed()
-                .split("\n");
+                .split('\n');
 
     } catch(QString &ex) {
         qCritical() << ex;
@@ -131,7 +127,7 @@ QStringList PackageTool::getPacmanPackages()
     try {
         packageList = CommandUtil::exec("bash", {"-c", "pacman -Q 2> /dev/null"})
                 .trimmed()
-                .split("\n");
+                .split('\n');
 
         for (int i = 0; i < packageList.count(); ++i)
             packageList[i] = packageList.at(i).split(QRegExp("\\s+")).first();
@@ -150,6 +146,49 @@ bool PackageTool::pacmanRemovePackages(QStringList packages)
         packages.push_back("-R");
 
         CommandUtil::sudoExec("pacman", packages);
+
+        return true;
+
+    } catch(QString &ex) {
+        qCritical() << ex;
+    }
+
+    return false;
+}
+
+/**********
+ * SNAP
+ **********/
+QStringList PackageTool::getSnapPackages()
+{
+    QStringList packageList = {};
+
+    if (CommandUtil::isExecutable("snap")) {
+        try {
+            packageList = CommandUtil::exec("snap", {"list"})
+                    .trimmed()
+                    .split('\n');
+
+            packageList.removeFirst(); // remove titles e.g name, version
+
+            for (int i = 0; i < packageList.count(); ++i)
+                packageList[i] = packageList.at(i).split(QRegExp("\\s+")).first();
+
+        } catch (QString &ex) {
+            qCritical() << ex;
+        }
+    }
+
+    return packageList;
+}
+
+bool PackageTool::snapRemovePackages(QStringList packages)
+{
+    try {
+        packages.insert(0, "remove");
+        qDebug() << packages;
+
+        CommandUtil::sudoExec("snap", packages);
 
         return true;
 

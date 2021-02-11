@@ -10,14 +10,14 @@
     <x>0</x>
     <y>0</y>
     <width>850</width>
-    <height>550</height>
+    <height>570</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string notr="true">Stacer</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="static.qrc">
+   <iconset>
     <normaloff>:/static/icons/icon256x256.png</normaloff>:/static/icons/icon256x256.png</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -37,7 +37,7 @@
     <property name="bottomMargin">
      <number>0</number>
     </property>
-    <item>
+    <item alignment="Qt::AlignHCenter">
      <widget class="QWidget" name="sidebar" native="true">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
@@ -68,13 +68,13 @@
         <number>0</number>
        </property>
        <property name="topMargin">
-        <number>0</number>
+        <number>5</number>
        </property>
        <property name="rightMargin">
         <number>0</number>
        </property>
        <property name="bottomMargin">
-        <number>0</number>
+        <number>5</number>
        </property>
        <item>
         <spacer name="verticalSpacer_2">
@@ -90,12 +90,15 @@
         </spacer>
        </item>
        <item>
-        <widget class="QPushButton" name="dashBtn">
+        <widget class="QPushButton" name="btnDash">
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
          </property>
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="toolTip">
+          <string>Dashboard</string>
          </property>
          <property name="styleSheet">
           <string notr="true"/>
@@ -103,34 +106,61 @@
          <property name="text">
           <string/>
          </property>
+         <property name="iconSize">
+          <size>
+           <width>28</width>
+           <height>28</height>
+          </size>
+         </property>
          <property name="checkable">
           <bool>true</bool>
          </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">sidebarBtnGroup</string>
+         </attribute>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="startupAppsBtn">
+        <widget class="QPushButton" name="btnStartupApps">
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
          </property>
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="toolTip">
+          <string>Startup Apps</string>
          </property>
          <property name="text">
           <string/>
          </property>
+         <property name="iconSize">
+          <size>
+           <width>28</width>
+           <height>28</height>
+          </size>
+         </property>
          <property name="checkable">
           <bool>true</bool>
          </property>
+         <attribute name="buttonGroup">
+          <string notr="true">sidebarBtnGroup</string>
+         </attribute>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="systemCleanerBtn">
+        <widget class="QPushButton" name="btnSystemCleaner">
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
          </property>
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="toolTip">
+          <string>System Cleaner</string>
          </property>
          <property name="styleSheet">
           <string notr="true"/>
@@ -138,86 +168,270 @@
          <property name="text">
           <string/>
          </property>
+         <property name="iconSize">
+          <size>
+           <width>28</width>
+           <height>28</height>
+          </size>
+         </property>
          <property name="checkable">
           <bool>true</bool>
          </property>
+         <attribute name="buttonGroup">
+          <string notr="true">sidebarBtnGroup</string>
+         </attribute>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="servicesBtn">
+        <widget class="QPushButton" name="btnSearch">
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
          </property>
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
          </property>
+         <property name="toolTip">
+          <string>Search</string>
+         </property>
          <property name="text">
           <string/>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>28</width>
+           <height>28</height>
+          </size>
          </property>
          <property name="checkable">
           <bool>true</bool>
          </property>
+         <attribute name="buttonGroup">
+          <string notr="true">sidebarBtnGroup</string>
+         </attribute>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="processesBtn">
+        <widget class="QPushButton" name="btnServices">
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
          </property>
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
          </property>
+         <property name="toolTip">
+          <string>Services</string>
+         </property>
          <property name="text">
           <string/>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>28</width>
+           <height>28</height>
+          </size>
          </property>
          <property name="checkable">
           <bool>true</bool>
          </property>
+         <attribute name="buttonGroup">
+          <string notr="true">sidebarBtnGroup</string>
+         </attribute>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="uninstallerBtn">
+        <widget class="QPushButton" name="btnProcesses">
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
          </property>
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
          </property>
+         <property name="toolTip">
+          <string>Processes</string>
+         </property>
          <property name="text">
           <string/>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>28</width>
+           <height>28</height>
+          </size>
          </property>
          <property name="checkable">
           <bool>true</bool>
          </property>
+         <attribute name="buttonGroup">
+          <string notr="true">sidebarBtnGroup</string>
+         </attribute>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="resourcesBtn">
+        <widget class="QPushButton" name="btnUninstaller">
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
          </property>
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
          </property>
+         <property name="toolTip">
+          <string>Uninstaller</string>
+         </property>
          <property name="text">
           <string/>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>28</width>
+           <height>28</height>
+          </size>
          </property>
          <property name="checkable">
           <bool>true</bool>
          </property>
+         <attribute name="buttonGroup">
+          <string notr="true">sidebarBtnGroup</string>
+         </attribute>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="settingsBtn">
+        <widget class="QPushButton" name="btnResources">
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
          </property>
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
          </property>
+         <property name="toolTip">
+          <string>Resources</string>
+         </property>
          <property name="text">
           <string/>
          </property>
+         <property name="iconSize">
+          <size>
+           <width>28</width>
+           <height>28</height>
+          </size>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">sidebarBtnGroup</string>
+         </attribute>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnHelpers">
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="toolTip">
+          <string>Helpers</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>28</width>
+           <height>28</height>
+          </size>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">sidebarBtnGroup</string>
+         </attribute>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnAptSourceManager">
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="toolTip">
+          <string>APT Repository Manager</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>28</width>
+           <height>28</height>
+          </size>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">sidebarBtnGroup</string>
+         </attribute>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnGnomeSettings">
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="toolTip">
+          <string>Gnome Settings</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>28</width>
+           <height>28</height>
+          </size>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">sidebarBtnGroup</string>
+         </attribute>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnSettings">
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="toolTip">
+          <string>Settings</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>28</width>
+           <height>28</height>
+          </size>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">sidebarBtnGroup</string>
+         </attribute>
         </widget>
        </item>
        <item>
@@ -233,16 +447,46 @@
          </property>
         </spacer>
        </item>
+       <item>
+        <widget class="QPushButton" name="btnFeedback">
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="toolTip">
+          <string>Feedback</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>28</width>
+           <height>28</height>
+          </size>
+         </property>
+         <property name="checkable">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
       </layout>
-      <zorder>dashBtn</zorder>
-      <zorder>servicesBtn</zorder>
-      <zorder>uninstallerBtn</zorder>
-      <zorder>startupAppsBtn</zorder>
-      <zorder>resourcesBtn</zorder>
+      <zorder>btnDash</zorder>
+      <zorder>btnServices</zorder>
+      <zorder>btnUninstaller</zorder>
+      <zorder>btnStartupApps</zorder>
+      <zorder>btnResources</zorder>
       <zorder>verticalSpacer_2</zorder>
-      <zorder>systemCleanerBtn</zorder>
-      <zorder>processesBtn</zorder>
-      <zorder>settingsBtn</zorder>
+      <zorder>btnSystemCleaner</zorder>
+      <zorder>btnProcesses</zorder>
+      <zorder>btnSettings</zorder>
+      <zorder>btnFeedback</zorder>
+      <zorder>btnGnomeSettings</zorder>
+      <zorder>btnAptSourceManager</zorder>
+      <zorder>btnSearch</zorder>
+      <zorder>btnHelpers</zorder>
      </widget>
     </item>
     <item>
@@ -297,16 +541,6 @@
          </property>
         </widget>
        </item>
-       <item>
-        <widget class="QStackedWidget" name="pageStacked">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-        </widget>
-       </item>
       </layout>
      </widget>
     </item>
@@ -315,8 +549,9 @@
    <zorder>sidebar</zorder>
   </widget>
  </widget>
- <resources>
-  <include location="static.qrc"/>
- </resources>
+ <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="sidebarBtnGroup"/>
+ </buttongroups>
 </ui>

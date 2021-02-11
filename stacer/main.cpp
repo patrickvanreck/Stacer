@@ -1,10 +1,12 @@
+
 #include <QApplication>
+#include <QSplashScreen>
 #include <QDebug>
+#include <QFontDatabase>
+
 #include "app.h"
 
-void messageHandler(QtMsgType type,
-                    const QMessageLogContext &context,
-                    const QString &message)
+void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &message)
 {
     Q_UNUSED(context)
 
@@ -32,20 +34,13 @@ void messageHandler(QtMsgType type,
                                 .arg(level)
                                 .arg(message);
 
-        static QString logPath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/log";
-
-        QDir().mkdir(logPath);
+        static QString logPath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
 
         QFile file(logPath + "/stacer.log");
 
-        QIODevice::OpenMode openMode;
+        QIODevice::OpenMode openMode = file.size() > (1L << 20) ? QIODevice::Truncate : QIODevice::Append;
 
-        if (file.size() > (1L << 20))
-            openMode = QIODevice::WriteOnly | QIODevice::Truncate;
-        else
-            openMode = QIODevice::WriteOnly | QIODevice::Append;
-
-        if (file.open(openMode)) {
+        if (file.open(QIODevice::WriteOnly | openMode)) {
             QTextStream stream(&file);
             stream << text << endl;
 
@@ -54,21 +49,43 @@ void messageHandler(QtMsgType type,
     }
 }
 
-
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
     qApp->setApplicationName("stacer");
     qApp->setApplicationDisplayName("Stacer");
-    qApp->setApplicationVersion("1.0.8");
+    qApp->setApplicationVersion("1.1.0");
     qApp->setWindowIcon(QIcon(":/static/logo.png"));
 
-    qInstallMessageHandler(messageHandler);
+    {
+        QCommandLineParser parser;
+        parser.addVersionOption();
+        parser.addHelpOption();
+        parser.process(app);
+    }
+
+    QFontDatabase::addApplicationFont(":/static/font/Ubuntu-R.ttf");
+
+    QPixmap pixSplash(":/static/splashscreen.png");
+
+    QSplashScreen *splash = new QSplashScreen(pixSplash);
+
+    splash->show();
+
+    app.processEvents();
 
     App w;
 
-    w.show();
+    QLatin1String hideOption("--hide");
+
+    if (argc < 2 || QString(argv[1]) != hideOption) {
+        w.show();
+    }
+
+    splash->finish(&w);
+
+    delete splash;
 
     return app.exec();
 }

@@ -1,5 +1,8 @@
 #include "startup_app_edit.h"
 #include "ui_startup_app_edit.h"
+#include "utilities.h"
+#include <QDebug>
+#include <QStyle>
 
 StartupAppEdit::~StartupAppEdit()
 {
@@ -11,13 +14,13 @@ QString StartupAppEdit::selectedFilePath = "";
 StartupAppEdit::StartupAppEdit(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::StartupAppEdit),
-    newAppTemplate("[Desktop Entry]\n"
+    mNewAppTemplate("[Desktop Entry]\n"
                    "Name=%1\n"
                    "Comment=%2\n"
                    "Exec=%3\n"
                    "Type=Application\n"
                    "Terminal=false\n"
-                   "X-GNOME-Autostart-enabled=true")
+                   "Hidden=false\n")
 {
     ui->setupUi(this);
 
@@ -27,14 +30,13 @@ StartupAppEdit::StartupAppEdit(QWidget *parent) :
 void StartupAppEdit::init()
 {
     setGeometry(
-        QStyle::alignedRect(
-            Qt::LeftToRight,
-            Qt::AlignCenter,
-            size(),
-            qApp->desktop()->availableGeometry())
+        QStyle::alignedRect(Qt::LeftToRight, Qt::AlignCenter,
+            size(), qApp->desktop()->availableGeometry())
     );
 
-    ui->errorMsg->hide();
+    mAutostartPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/autostart";
+
+    ui->lblErrorMsg->hide();
 
     setStyleSheet(AppManager::ins()->getStylesheetFileContent());
 }
@@ -42,10 +44,10 @@ void StartupAppEdit::init()
 void StartupAppEdit::show()
 {
     // clear fields
-    ui->appNameTxt->clear();
-    ui->appCommentTxt->clear();
-    ui->appCommandTxt->clear();
-    ui->errorMsg->hide();
+    ui->txtStartupAppName->clear();
+    ui->txtStartupAppComment->clear();
+    ui->txtStartupAppCommand->clear();
+    ui->lblErrorMsg->hide();
 
     if(! selectedFilePath.isEmpty())
     {
@@ -53,56 +55,63 @@ void StartupAppEdit::show()
 
         if(! lines.isEmpty())
         {
-#define getValue(r) lines.filter(r).first().split("=").last().trimmed()
-            ui->appNameTxt->setText(getValue(NAME_REG));
-            ui->appCommentTxt->setText(getValue(COMMENT_REG));
-            ui->appCommandTxt->setText(getValue(EXEC_REG));
-#undef getValue
+            ui->txtStartupAppName->setText(Utilities::getDesktopValue(NAME_REG, lines));
+            ui->txtStartupAppComment->setText(Utilities::getDesktopValue(COMMENT_REG, lines));
+            ui->txtStartupAppCommand->setText(Utilities::getDesktopValue(EXEC_REG, lines));
         }
     }
 
     QDialog::show();
 }
 
-void StartupAppEdit::on_saveBtn_clicked()
+void StartupAppEdit::changeDesktopValue(QStringList &lines, const QRegExp &reg, const QString &text)
 {
-    static QString autostartPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/autostart";
+    int pos = lines.indexOf(reg);
 
-    if(isValid())
-    {
-        if(! selectedFilePath.isEmpty())
-        {
+    if (pos != -1) {
+        lines.replace(pos, text);
+    } else {
+        lines.append(text);
+    }
+}
+
+void StartupAppEdit::on_btnSave_clicked()
+{
+    if(isValid()) {
+        if(! selectedFilePath.isEmpty()) {
             QStringList lines = FileUtil::readListFromFile(selectedFilePath);
 
-            lines.replace(lines.indexOf(NAME_REG), QString("Name=%1").arg(ui->appNameTxt->text()));
-            lines.replace(lines.indexOf(COMMENT_REG), QString("Comment=%1").arg(ui->appCommentTxt->text()));
-            lines.replace(lines.indexOf(EXEC_REG), QString("Exec=%1").arg(ui->appCommandTxt->text()));
+            changeDesktopValue(lines, NAME_REG, QString("Name=%1").arg(ui->txtStartupAppName->text()));
+            changeDesktopValue(lines, COMMENT_REG, QString("Comment=%1").arg(ui->txtStartupAppComment->text()));
+            changeDesktopValue(lines, EXEC_REG, QString("Exec=%1").arg(ui->txtStartupAppCommand->text()));
 
-            FileUtil::writeFile(selectedFilePath, QString(lines.join("\n")), QIODevice::ReadWrite | QIODevice::Truncate);
+            FileUtil::writeFile(selectedFilePath, lines.join("\n"), QIODevice::ReadWrite | QIODevice::Truncate);
         }
-        else
-        {
+        else {
             // new file content
-            QString appContent = newAppTemplate
-                    .arg(ui->appNameTxt->text())
-                    .arg(ui->appCommentTxt->text())
-                    .arg(ui->appCommandTxt->text());
+            QString appContent = mNewAppTemplate
+                    .arg(ui->txtStartupAppName->text())
+                    .arg(ui->txtStartupAppComment->text())
+                    .arg(ui->txtStartupAppCommand->text());
 
             // file name
-            QString appFileName = ui->appNameTxt->text()
-                    .replace(" ", "_")
-                    .replace(QRegExp("\\W+"), "");
+            QString appFileName = ui->txtStartupAppName->text()
+                    .simplified()
+                    .replace(' ', '-')
+                    .toLower();
 
-            QString path = QString("%1/%2.desktop").arg(autostartPath).arg(appFileName);
+            qDebug() << appFileName;
+
+            QString path = QString("%1/%2.desktop").arg(mAutostartPath).arg(appFileName);
 
             FileUtil::writeFile(path, appContent);
         }
 
+        emit startupAppAdded(); // signal
         close();
-        closeWindow(); // signal
     }
     else {
-        ui->errorMsg->show();
+        ui->lblErrorMsg->show();
     }
 
     selectedFilePath = "";
@@ -110,7 +119,7 @@ void StartupAppEdit::on_saveBtn_clicked()
 
 bool StartupAppEdit::isValid()
 {
-    return ! ui->appNameTxt->text().isEmpty() &&
-           ! ui->appCommentTxt->text().isEmpty() &&
-           ! ui->appCommandTxt->text().isEmpty();
+    return ! ui->txtStartupAppName->text().isEmpty() &&
+           ! ui->txtStartupAppComment->text().isEmpty() &&
+           ! ui->txtStartupAppCommand->text().isEmpty();
 }

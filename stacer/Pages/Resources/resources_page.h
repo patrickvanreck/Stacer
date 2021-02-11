@@ -6,6 +6,8 @@
 
 #include "history_chart.h"
 #include "Managers/info_manager.h"
+#include <QChart>
+#include <QSpacerItem>
 
 namespace Ui {
     class ResourcesPage;
@@ -21,20 +23,37 @@ public:
 
 private slots:
     void updateCpuChart();
+    void updateCpuLoadAvg();
+    void updateDiskReadWrite();
     void updateMemoryChart();
     void updateNetworkChart();
+    void initDiskPieChart();
+    void diskPieSeriesCustomize();
 
 private:
-    Ui::ResourcesPage *ui;
     void init();
 
 private:
-    HistoryChart *cpuChart;
-    HistoryChart *memoryChart;
-    HistoryChart *networkChart;
+    Ui::ResourcesPage *ui;
 
-    QTimer *timer;
     InfoManager *im;
+
+    HistoryChart *mChartCpu;
+    HistoryChart *mChartCpuLoadAvg;
+    HistoryChart *mChartDiskReadWrite;
+    HistoryChart *mChartMemory;
+    HistoryChart *mChartNetwork;
+
+    QChartView *mChartViewDiskPie;
+    QChart *mChartDiskPie;
+
+    QWidget *gridWidgetDiskPie;
+    QGridLayout *gridLayoutDiskPie;
+    QPieSeries *mDiskPieSeries;
+
+    QList<int> chartColors;
+
+    QTimer *mTimer;
 };
 
 #endif // RESOURCESPAGE_H

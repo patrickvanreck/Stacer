@@ -1,5 +1,6 @@
 #include "startup_apps_page.h"
 #include "ui_startup_apps_page.h"
+#include "utilities.h"
 
 StartupAppsPage::~StartupAppsPage()
 {
@@ -9,65 +10,105 @@ StartupAppsPage::~StartupAppsPage()
 StartupAppsPage::StartupAppsPage(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::StartupAppsPage),
-    startupAppEdit(new StartupAppEdit(this))
+    mFileSystemWatcher(this)
 {
     ui->setupUi(this);
 
     init();
 }
 
+bool StartupAppsPage::checkIfDisabled(const QString& as_path)
+{
+    const QString disabled_str("X-GNOME-Autostart-enabled=false");
+    QFile autostart_file(as_path);
+
+    autostart_file.open(QIODevice::ReadOnly | QIODevice::Text);
+
+    return autostart_file.readAll().indexOf(disabled_str, 0) != -1;
+}
+
 void StartupAppsPage::init()
 {
-    loadApps();
+    mAutostartPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation).append("/autostart");
+    QFileInfo asfi(mAutostartPath);
+    bool startups_disabled = false;
 
-    connect(startupAppEdit, &StartupAppEdit::closeWindow, this, &StartupAppsPage::loadApps);
+    /* original behavior, autostart is a dir and not...
+     * * a pre-exisiting file as is case on my machine.
+     */
+    if (asfi.isDir() == true) {
+        mAutostartPath.append("/");
+    }
+    else {
+    /* altered behavior for if a file is at this location instead
+     * * check for disabled string
+     * * * if found, don't add watcher
+     */
+        startups_disabled = checkIfDisabled(mAutostartPath);
+    }
+
+    if (!startups_disabled) {
+        if (! QDir(mAutostartPath).exists()) {
+            QDir().mkdir(mAutostartPath);
+        }
+
+        mFileSystemWatcher.addPath(mAutostartPath);
+
+        loadApps();
+
+        connect(&mFileSystemWatcher, &QFileSystemWatcher::directoryChanged, this, &StartupAppsPage::loadApps);
+    }
+    else {
+        ui->lblNotFound->setText(tr("Startup Apps are disabled."));
+        ui->btnAddStartupApp->setEnabled(false);
+    }
+
+    connect(ui->btnAddStartupApp, SIGNAL(clicked()), this, SLOT(openStartupAppEdit()));
+
+    Utilities::addDropShadow(ui->btnAddStartupApp, 60);
 }
 
 void StartupAppsPage::loadApps()
 {
-    // clear layout
-    ui->startupListWidget->clear();
+    // clear
+    ui->listWidgetStartup->clear();
 
-    static QString autostartPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/autostart";
+    QDir autostartFiles(mAutostartPath, "*.desktop");
 
-    QDir autostartFiles(autostartPath, "*.desktop");
-
-    QChar sep('=');
-    QRegExp nameFilter("(\\W+|^)Name=");
-    QRegExp enabledFilter("(\\W+|^)X-GNOME-Autostart-enabled=");
     QLatin1String enabledStr("true");
     for (const QFileInfo &f : autostartFiles.entryInfoList())
     {
         QStringList lines = FileUtil::readListFromFile(f.absoluteFilePath());
 
-        QStringList d_name = lines.filter(nameFilter); // get name
+        QString appName = Utilities::getDesktopValue(NAME_REG, lines); // get name
 
-        if(! d_name.isEmpty()) // has a name
+        if(! appName.isEmpty()) // has a name
         {
-            QString appName = d_name.first().split(sep).last().trimmed();
-
-            QStringList d_autostart = lines.filter(enabledFilter);
-
             bool enabled = false;
-            if(! d_autostart.isEmpty())
-            {
-                // X-GNOME-Autostart-enabled=[true|false]
-                QString status = d_autostart.first()
-                        .split(sep).last().toLower().trimmed();
 
-                enabled = ! status.compare(enabledStr);
+            // Hidden=[true|false]
+            QString hidden = Utilities::getDesktopValue(HIDDEN_REG, lines).toLower();
+
+            // X-GNOME-Autostart-enabled=[true|false]
+            QString gnomeEnabled = Utilities::getDesktopValue(GNOME_ENABLED_REG, lines).toLower();
+
+            if (! hidden.isEmpty()) {
+                enabled = (hidden != enabledStr);
+            } else {
+                enabled = (gnomeEnabled == enabledStr);
             }
 
-            QListWidgetItem *item = new QListWidgetItem(ui->startupListWidget);
+            QListWidgetItem *item = new QListWidgetItem(ui->listWidgetStartup);
+
             // new app
             StartupApp *app = new StartupApp(appName, enabled, f.absoluteFilePath(), this);
 
-            // delete button click
-            connect(app, &StartupApp::deleteApp, this, &StartupAppsPage::loadApps);
+            connect(app, &StartupApp::deleteAppS, this, &StartupAppsPage::loadApps);
+            connect(app, &StartupApp::editStartupAppS, this, &StartupAppsPage::openStartupAppEdit);
 
             item->setSizeHint(app->sizeHint());
 
-            ui->startupListWidget->setItemWidget(item, app);
+            ui->listWidgetStartup->setItemWidget(item, app);
         }
     }
 
@@ -76,18 +117,22 @@ void StartupAppsPage::loadApps()
 
 void StartupAppsPage::setAppCount()
 {
-    int count = ui->startupListWidget->count();
+    int count = ui->listWidgetStartup->count();
 
-    ui->startupAppsTitleLbl->setText(
-        tr("System Startup Applications (%1)")
+    ui->lblStartupAppsTitle->setText(
+        tr("Startup Applications (%1)")
         .arg(QString::number(count)));
 
     ui->notFoundWidget->setVisible(! count);
-    ui->startupListWidget->setVisible(count);
+    ui->listWidgetStartup->setVisible(count);
 }
 
-void StartupAppsPage::on_addStartupAppBtn_clicked()
+void StartupAppsPage::openStartupAppEdit(const QString filePath)
 {
-    StartupAppEdit::selectedFilePath = "";
-    startupAppEdit->show();
+    StartupAppEdit::selectedFilePath = filePath;
+    if (mStartupAppEdit.isNull()) {
+        mStartupAppEdit = QSharedPointer<StartupAppEdit>(new StartupAppEdit(this));
+        connect(mStartupAppEdit.data(), &StartupAppEdit::startupAppAdded, this, &StartupAppsPage::loadApps);
+    }
+    mStartupAppEdit->show();
 }

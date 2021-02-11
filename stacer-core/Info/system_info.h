@@ -6,9 +6,10 @@
 #include "Utils/command_util.h"
 #include "Info/cpu_info.h"
 
-#define PROC_CPUINFO "/proc/cpuinfo"
+#define LSCPU_COMMAND "LANG=nl_NL.UTF-8 lscpu"
 
 #include "stacer-core_global.h"
+
 class STACERCORESHARED_EXPORT SystemInfo
 {
 public:
@@ -21,18 +22,20 @@ public:
     QString getCpuModel() const;
     QString getCpuSpeed() const;
     QString getCpuCore() const;
+    QString getUsername() const;
 
     QFileInfoList getCrashReports() const;
     QFileInfoList getAppLogs() const;
     QFileInfoList getAppCaches() const;
 
-    QString getUsername() const;
+    QStringList getUserList() const;
+    QStringList getGroupList() const;
 
+private slots:
 private:
     QString cpuCore;
     QString cpuModel;
     QString cpuSpeed;
-
     QString username;
 };
 

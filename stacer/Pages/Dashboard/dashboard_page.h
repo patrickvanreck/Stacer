@@ -9,9 +9,11 @@
 #include <QDesktopServices>
 #include <QtConcurrent>
 
-#include <Managers/info_manager.h>
+#include "Managers/info_manager.h"
 #include "circlebar.h"
 #include "linebar.h"
+
+#include "Managers/setting_manager.h"
 
 namespace Ui {
     class DashboardPage;
@@ -35,21 +37,26 @@ private slots:
     void updateDiskBar();
     void updateNetworkBar();
 
-    void on_downloadUpdateBtn_clicked();
+    void on_btnDownloadUpdate_clicked();
+
+signals:
+    void sigShowUpdateBar();
 
 private:
     Ui::DashboardPage *ui;
 
 private:
-    CircleBar* cpuBar;
-    CircleBar* memBar;
-    CircleBar* diskBar;
+    CircleBar* mCpuBar;
+    CircleBar* mMemBar;
+    CircleBar* mDiskBar;
 
-    LineBar *downloadBar;
-    LineBar *uploadBar;
+    LineBar *mDownloadBar;
+    LineBar *mUploadBar;
 
-    QTimer *timer;
+    QTimer *mTimer;
     InfoManager *im;
+
+    SettingManager *mSettingManager;
 };
 
 #endif // DASHBOARDPAGE_H

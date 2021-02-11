@@ -1,23 +1,19 @@
 #include "tool_manager.h"
 
-ToolManager *ToolManager::_instance = NULL;
+ToolManager *ToolManager::instance = NULL;
 
 ToolManager *ToolManager::ins()
 {
-    if(_instance == NULL)
-        _instance = new ToolManager;
+    if(! instance) {
+        instance = new ToolManager;
+    }
 
-    return _instance;
+    return instance;
 }
 
-ToolManager::ToolManager()
-{
-
-}
-
-/******************
- * SERVICES
- *****************/
+/*
+ * Services
+ */
 QList<Service> ToolManager::getServices() const
 {
     return ServiceTool::getServicesWithSystemctl();
@@ -43,9 +39,9 @@ bool ToolManager::serviceIsEnabled(const QString &sname) const
     return ServiceTool::serviceIsEnabled(sname);
 }
 
-/******************
- * PACKAGES
- *****************/
+/*
+ * Packages
+ */
 QStringList ToolManager::getPackages() const
 {
     switch (PackageTool::currentPackageTool) {
@@ -63,6 +59,16 @@ QStringList ToolManager::getPackages() const
         return QStringList();
         break;
     }
+}
+
+QStringList ToolManager::getSnapPackages() const
+{
+    return PackageTool::getSnapPackages();
+}
+
+bool ToolManager::uninstallSnapPackages(const QStringList packages)
+{
+    return PackageTool::snapRemovePackages(packages);
 }
 
 QFileInfoList ToolManager::getPackageCaches() const
@@ -86,8 +92,6 @@ QFileInfoList ToolManager::getPackageCaches() const
 
 void ToolManager::uninstallPackages(const QStringList &packages)
 {
-    uninstallStarted();
-
     switch (PackageTool::currentPackageTool) {
     case PackageTool::PackageTools::APT:
         PackageTool::dpkgRemovePackages(packages);
@@ -104,7 +108,38 @@ void ToolManager::uninstallPackages(const QStringList &packages)
     default:
         break;
     }
+}
 
-    uninstallFinished();
+/*
+ * APT Source
+ */
+bool ToolManager::checkSourceRepository() const
+{
+    return AptSourceTool::checkSourceRepository();
+}
+
+QList<APTSourcePtr> ToolManager::getSourceList() const
+{
+    return AptSourceTool::getSourceList();
+}
+
+void ToolManager::removeAPTSource(const APTSourcePtr source)
+{
+    AptSourceTool::removeAPTSource(source);
+}
+
+void ToolManager::changeAPTStatus(const APTSourcePtr aptSource, const bool status)
+{
+    AptSourceTool::changeStatus(aptSource, status);
+}
+
+void ToolManager::changeAPTSource(const APTSourcePtr aptSource, const QString newSource)
+{
+    AptSourceTool::changeSource(aptSource, newSource);
+}
+
+void ToolManager::addAPTRepository(const QString &repository, const bool isSource)
+{
+    AptSourceTool::addRepository(repository, isSource);
 }
 
